@@ -8,6 +8,11 @@ const char* password   = WIFI_PASSWORD;
 const char* ntpServer = "pool.ntp.org";
 const char* TZ_INFO = "CET-1CEST,M3.5.0/2,M10.5.0/3";
 struct tm timeinfo;
+int PIN_A = 12;
+int PIN_B = 13;
+int PIN_EN = 14;
+int lastMinute = 0; 
+int clockState = PIN_A;
 
 void connectWifi(){
   Serial.printf("Connecting to %s ", ssid);
@@ -33,6 +38,7 @@ void getCurrentTime(){
   setenv("TZ", TZ_INFO, 1);
   tzset();
 }
+
 void printCurrentTime(){
   char strftime_buf[64];
   time_t now;
@@ -42,16 +48,51 @@ void printCurrentTime(){
   Serial.printf("Current time: %s\n", strftime_buf);
 }
 
+bool checkMinuteHasPassed(){
+  int currentMinute = timeinfo.tm_min;
+  if(currentMinute != lastMinute){
+    lastMinute = currentMinute;
+    return true;
+  }
+  return false; 
+}
+
+void advanceClock(){
+  digitalWrite(PIN_EN, HIGH);
+  if(clockState == PIN_A){
+    clockState = PIN_B;
+  } else {
+    clockState = PIN_A;
+  }
+  digitalWrite(clockState, HIGH);
+  delay(1500);
+}
+
+void disableOutput(){
+  digitalWrite(PIN_A, LOW);
+  digitalWrite(PIN_B, LOW);
+  digitalWrite(PIN_EN, LOW);
+}
+
 void setup()
 {
   Serial.begin(115200);
   connectWifi();
   getCurrentTime();
   disconnectWifi();
+  pinMode(PIN_A, OUTPUT);
+  pinMode(PIN_B, OUTPUT);
+  pinMode(PIN_EN, OUTPUT);
+  advanceClock();
 }
 
 void loop()
 {
-  delay(1000);
+  if(checkMinuteHasPassed()){
+    Serial.println("Advancing clock");
+    advanceClock();
+  }
+  disableOutput();
   printCurrentTime();
+  delay(1000);
 }
