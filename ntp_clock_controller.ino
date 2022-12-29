@@ -12,16 +12,20 @@ int PIN_A = 12;
 int PIN_B = 13;
 int PIN_EN = 14;
 int lastMinute = 0; 
+int lastHour = 0;
 int clockState = PIN_A;
 
 void connectWifi(){
   Serial.printf("Connecting to %s ", ssid);
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-      Serial.print(".");
+  for( int timeOut = 0; timeOut < 100; timeOut++){
+     if(WiFi.status() != WL_CONNECTED) {
+      Serial.println(" CONNECTED");
+      break;
+     }
+     delay(500);
+     Serial.print(".");
   }
-  Serial.println(" CONNECTED");
 }
 
 void disconnectWifi(){
@@ -57,6 +61,24 @@ bool checkMinuteHasPassed(){
   return false; 
 }
 
+bool checkHourHasPassed(){
+  int currentHour = timeinfo.tm_hour;
+  if(currentHour != lastHour){
+    lastHour = currentHour;
+    return true;
+  }
+  return false; 
+}
+
+
+bool checkTimeIsSet(){
+  int currentYear = timeinfo.tm_year;
+  if(currentYear == 70) {
+    return false;
+  }
+  return true;
+}
+
 void advanceClock(){
   digitalWrite(PIN_EN, HIGH);
   if(clockState == PIN_A){
@@ -74,12 +96,17 @@ void disableOutput(){
   digitalWrite(PIN_EN, LOW);
 }
 
-void setup()
-{
-  Serial.begin(115200);
+void refreshTime() {
   connectWifi();
   getCurrentTime();
   disconnectWifi();
+}
+
+void setup()
+{
+  Serial.begin(115200);
+  delay(1000);
+  refreshTime();
   pinMode(PIN_A, OUTPUT);
   pinMode(PIN_B, OUTPUT);
   pinMode(PIN_EN, OUTPUT);
@@ -88,9 +115,18 @@ void setup()
 
 void loop()
 {
-  if(checkMinuteHasPassed()){
+  if(checkMinuteHasPassed()) {
     Serial.println("Advancing clock");
-    advanceClock();
+    advanceClock();    
+  }
+  if(checkHourHasPassed()) {
+    Serial.println("Connecting to WiFi and refreshing time");
+    refreshTime();
+  }
+  if( !checkTimeIsSet() ) {
+    Serial.println("Year is 1970, time not set");
+    Serial.println("Reconnecting to time server");
+    refreshTime();
   }
   disableOutput();
   printCurrentTime();
