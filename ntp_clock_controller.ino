@@ -2,6 +2,8 @@
 #include "time.h"
 #include "config.h"
 
+// select board DOIT ESP32 DEVKITV1
+
 // make sure config.h contains your wifi password and SSID
 const char* ssid       = WIFI_SSID;
 const char* password   = WIFI_PASSWORD;
